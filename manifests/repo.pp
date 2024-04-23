@@ -36,6 +36,7 @@ class varnish::repo {
         gpgcheck        => '0',
         sslverify       => '1',
         sslcacert       => '/etc/pki/tls/certs/ca-bundle.crt',
+        enabled         => '1',
       }
 
       yumrepo { 'varnish-cache-source':
@@ -47,6 +48,7 @@ class varnish::repo {
         gpgcheck        => '0',
         sslverify       => '1',
         sslcacert       => '/etc/pki/tls/certs/ca-bundle.crt',
+        enabled         => '1',
       }
     }
 
