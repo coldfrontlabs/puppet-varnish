@@ -1,29 +1,27 @@
 # Add the Varnish repo
 class varnish::repo {
+  $ver = "${varnish::version_major}${varnish::version_minor}${varnish::version_lts}"
 
-  $ver = "${::varnish::version_major}${::varnish::version_minor}${::varnish::version_lts}"
-
-  case $::osfamily {
+  case $facts['os']['family'] {
     'RedHat': {
-
       if $ver == '50' {
-        if $::operatingsystemmajrelease == '6'  {
+        if $facts['os']['release']['major'] == '6' {
           fail('Varnish 5.0 from Packagecloud is not supported on RHEL/CentOS 6')
-        } elsif $::operatingsystemmajrelease == '7' {
+        } elsif $facts['os']['release']['major'] == '7' {
           # https://github.com/varnishcache/pkg-varnish-cache/issues/42
           fail('Varnish 5.0 on RHEL/CentOS 7 has a known packaging bug in the varnish_reload_vcl script, please use 5.1 instead. If the bug has been fixed, please submit a pull request to remove this message.')
         }
       }
 
-      if $::varnish::version_major == '6' and $::operatingsystemmajrelease == '6' {
+      if $varnish::version_major == '6' and $facts['os']['release']['major'] == '6' {
         fail('Varnish 6.0 and above from Packagecloud is not supported on RHEL/CentOS 6')
       }
 
       $package_require = undef
 
       # Varnish 4 and above need EPEL for jemalloc
-      if $::varnish::version_major != '3' {
-        include ::epel
+      if $varnish::version_major != '3' {
+        include epel
         Yumrepo['varnish-cache','varnish-cache-source'] {
           require => Yumrepo['epel'],
         }
@@ -31,7 +29,7 @@ class varnish::repo {
 
       yumrepo { 'varnish-cache':
         descr           => "varnishcache_varnish${ver}",
-        baseurl         => "https://packagecloud.io/varnishcache/varnish${ver}/el/${::operatingsystemmajrelease}/\$basearch",
+        baseurl         => "https://packagecloud.io/varnishcache/varnish${ver}/el/${facts['os']['release']['major']}/\$basearch",
         gpgkey          => "https://packagecloud.io/varnishcache/varnish${ver}/gpgkey",
         metadata_expire => '300',
         repo_gpgcheck   => '1',
@@ -42,7 +40,7 @@ class varnish::repo {
 
       yumrepo { 'varnish-cache-source':
         descr           => "varnishcache_varnish${ver}-source",
-        baseurl         => "https://packagecloud.io/varnishcache/varnish${ver}/el/${::operatingsystemmajrelease}/SRPMS",
+        baseurl         => "https://packagecloud.io/varnishcache/varnish${ver}/el/${facts['os']['release']['major']}/SRPMS",
         gpgkey          => "https://packagecloud.io/varnishcache/varnish${ver}/gpgkey",
         metadata_expire => '300',
         repo_gpgcheck   => '1',
@@ -52,43 +50,47 @@ class varnish::repo {
       }
     }
 
-
     'Debian': {
-      case $::operatingsystem {
+      case $facts['os']['name'] {
         'Debian': {
-          if $ver == '50' and $::lsbdistcodename == 'wheezy' {
+          if $ver == '50' and $facts['os']['distro']['codename'] == 'wheezy' {
             fail('Varnish 5.0 from Packagecloud is not supported on Debian 7 (Wheezy)')
           }
 
-          if $::varnish::version_major == '6' and $::lsbdistcodename != 'stretch' {
-            fail('Varnish 6.0 and above is only supported on Debian 9 (Stretch)')
+          if $varnish::version_major == '6' and versioncmp($facts['os']['release']['full'],'9.0') == -1 {
+            fail('Varnish 6.0 and above is only supported on Debian 9 (Stretch) and above')
           }
         }
 
         'Ubuntu': {
-          if $ver == '30' and versioncmp($::operatingsystemmajrelease,'16.04') >= 0 {
+          if $ver == '30' and versioncmp($facts['os']['release']['full'], '16.04') >= 0 {
             fail('Varnish 3 from Packagecloud is not supported after Ubuntu 14.04 (Trusty)')
           }
 
-          if $ver == '50' and $::lsbdistcodename == 'trusty' {
+          if $ver == '50' and $facts['os']['distro']['codename'] == 'trusty' {
             fail('Varnish 5.0 has a known packaging bug in the reload-vcl script, please use 5.1 instead. If the bug has been fixed, please submit a pull request to remove this message.')
           }
 
-          if $::varnish::version_major == '6' and versioncmp($::operatingsystemmajrelease,'16.04') == -1 {
+          if $varnish::version_major == '6' and versioncmp($facts['os']['release']['full'], '16.04') == -1 {
             fail('Varnish 6.0 and above is only supported on Ubuntu 16.04 (Xenial) and newer')
           }
         }
 
         default: {
-          fail("Unsupported Debian OS: ${::operatingsystem}")
+          fail("Unsupported Debian OS: ${facts['os']['name']}")
         }
       }
 
       ensure_packages('apt-transport-https')
 
-      $os_lower        = downcase($::operatingsystem)
+      $os_lower        = downcase($facts['os']['name'])
       $package_require = Exec['apt_update']
-      $gpg_key_id      = "${::varnish::version_major}.${::varnish::version_minor}${::varnish::version_lts}" ? {
+      $gpg_key_id      = "${varnish::version_major}.${varnish::version_minor}${varnish::version_lts}" ? {
+        '6.6'    => 'A0378A38E4EACA3660789E570BAC19E3F6C90CD5',
+        '6.5'    => 'A487F9BE81D9DF5121488CFE1C7B4E9FF149D65B',
+        '6.4'    => 'A9897320C397E3A60C03E8BF821AD320F71BFF3D',
+        '6.3'    => '920A8A7AA7120A8604BCCD294A42CD6EB810E55D',
+        '6.2'    => 'B54813B54CA95257D3590B3F1B0096460868C7A9',
         '6.1'    => '4A066C99B76A0F55A40E3E1E387EF1F5742D76CC',
         '6.0lts' => '48D81A24CB0456F5D59431D94CFCFD6BA750EDCD',
         '6.0'    => '7C5B46721AF00FD57E68E6E8D2605BF74E8B9DBA',
@@ -101,7 +103,7 @@ class varnish::repo {
       }
 
       ::apt::source { 'varnish-cache':
-        comment  => "Apt source for Varnish ${::varnish::version_major}.${::varnish::version_minor}${::varnish::version_lts}",
+        comment  => "Apt source for Varnish ${varnish::version_major}.${varnish::version_minor}${varnish::version_lts}",
         location => "https://packagecloud.io/varnishcache/varnish${ver}/${os_lower}/",
         repos    => 'main',
         require  => Package['apt-transport-https'],
@@ -117,7 +119,7 @@ class varnish::repo {
     }
 
     default: {
-      fail("Unsupported repo osfamily: ${::osfamily}")
+      fail("Unsupported repo osfamily: ${facts['os']['family']}")
     }
   }
 }
