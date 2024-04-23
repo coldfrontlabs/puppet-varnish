@@ -37,6 +37,7 @@ class varnish::repo {
         sslverify       => '1',
         sslcacert       => '/etc/pki/tls/certs/ca-bundle.crt',
         enabled         => '1',
+        priority        => '1',
       }
 
       yumrepo { 'varnish-cache-source':
@@ -49,6 +50,7 @@ class varnish::repo {
         sslverify       => '1',
         sslcacert       => '/etc/pki/tls/certs/ca-bundle.crt',
         enabled         => '1',
+        priority        => '1',
       }
     }
 
